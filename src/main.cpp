@@ -1,24 +1,34 @@
-#include<iostream>
-#include<cstdlib>
-#include<vector>
+#include <iostream>
+#include <cstdlib>
+#include <vector>
 
-#include"process/process.h"
-#include"memory/memory.h"
-#include"common/color.h"
+#include "process/process.h"
+#include "memory/memory.h"
+#include "common/color.h"
+#include "elf/elf_view.h"
 
 using namespace std;
 
-int main(int argc , char*argv[])
+int main(int argc, char *argv[])
 {
     using namespace std;
-    if(argc != 2){
-        print_how_to_use(argv[0]);  //argv[0] = program name
+    if (argc != 2)
+    {
+        print_how_to_use(argv[0]); // argv[0] = program name
         exit(1);
     }
-    const char* target_path = argv[1];
+    const char *target_path = argv[1];
+
+    if (!print_elf_info(target_path))
+    {
+        cerr << "[main]: Target is not a valid ELF";
+        return -1;
+    }
+
     pid_t child_pid = start_child_and_father_program(target_path);
-    if(child_pid == -1){
-        cerr<<"Error"<<endl;
+    if (child_pid == -1)
+    {
+        cerr << "Error" << endl;
         exit(1);
     }
 
@@ -29,4 +39,3 @@ int main(int argc , char*argv[])
     clean_child_program(child_pid);
     return 0;
 }
-
