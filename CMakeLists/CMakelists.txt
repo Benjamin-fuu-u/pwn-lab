@@ -18,6 +18,7 @@ add_executable(mapview
                  src/process/process.cpp
                  src/memory/memory.cpp
                  src/elf/elf_view.cpp
+                 src/symbols/symbols.cpp
               )
 
 # push the .exe under build
