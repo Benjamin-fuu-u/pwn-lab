@@ -6,6 +6,7 @@
 #include "memory/memory.h"
 #include "common/color.h"
 #include "elf/elf_view.h"
+#include "symbols/symbols.h"
 
 using namespace std;
 
@@ -25,6 +26,14 @@ int main(int argc, char *argv[])
         return -1;
     }
 
+    vector<Symbol> symbols = read_symbols(target_path);
+
+    if (symbols.empty())
+    {
+        cerr << "No symbol found" << endl;
+        return -1;
+    }
+
     pid_t child_pid = start_child_and_father_program(target_path);
     if (child_pid == -1)
     {
@@ -35,6 +44,12 @@ int main(int argc, char *argv[])
     vector<MemoryRegion> regions = read_memory_maps(child_pid);
 
     print_colored_maps(regions);
+
+    uint64_t base_address = get_base_address(regions, target_path);
+
+    bool is_pie = check_is_pie(target_path);
+
+    print_symbol_addresses(symbols, base_address, is_pie);
 
     clean_child_program(child_pid);
     return 0;
