@@ -3,6 +3,7 @@
 #include <vector>
 #include <cstdint> //uint8_t , uint_16t  ensure the int size
 #include <cstring> //"memcmp" move or compare the binary
+#include <cerrno>
 
 #include "elf_view.h"
 #include "../common/color.h"
@@ -110,7 +111,7 @@ bool print_elf_info(const string &target_path)
     // compare the memory  , compare first_info and ELFMAG(means 0x7f , "E" , "L" , "F") , the length is SELFMAG(means 4)
     if (memcmp(first_info, ELFMAG, SELFMAG) != 0)
     {
-        cerr << "[ELF] Error nit an ELF" << endl;
+        cerr << "[ELF] Error not an ELF" << endl;
         return false;
     }
 
@@ -143,16 +144,7 @@ bool print_elf_info(const string &target_path)
     }
     else if (first_info[EI_CLASS] == ELFCLASS32)
     {
-        Elf32_Ehdr ehdr{};
-
-        file.read(reinterpret_cast<char *>(&ehdr), sizeof(ehdr));
-
-        if (!file)
-        {
-            cerr << "[ELF] Error: " << strerror(errno) << endl;
-            return false;
-        }
-        print_ehdr_common(ehdr);
+        cerr << "[ELF]: is 32 byte si not supported" << endl;
     }
     else
     {
@@ -161,4 +153,38 @@ bool print_elf_info(const string &target_path)
     }
     cout << endl;
     return true;
+}
+
+bool check_is_pie(const string &target_path)
+{
+    ifstream file(target_path, ios::binary); // use binary to open the file
+    if (!file)
+    {
+        cerr << "[ELF] Error " << strerror(errno) << endl;
+        return false;
+    }
+
+    // read the first 16 bytes
+    unsigned char first_info[EI_NIDENT]; //"EI_NIDENT" means 16 bytes
+    file.read(reinterpret_cast<char *>(first_info), EI_NIDENT);
+
+    if (memcmp(first_info, ELFMAG, SELFMAG) != 0)
+    {
+        cerr << "[ELF] Error not an ELF" << endl;
+        return false;
+    }
+
+    file.seekg(0, ios::beg);
+
+    if (first_info[EI_CLASS] == ELFCLASS64)
+    {
+        Elf64_Ehdr ehdr{};
+        file.read(reinterpret_cast<char *>(&ehdr), sizeof(ehdr));
+        return (ehdr.e_type == ET_DYN);
+    }
+    else
+    {
+        cerr << "[ELF] : Error not an 64 byte";
+        return false;
+    }
 }
