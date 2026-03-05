@@ -45,12 +45,14 @@ static vector<Symbol> read_symbols_64(ifstream &file, const Elf64_Ehdr &ehdr)
 
     Elf64_Shdr *symtab_hdr = nullptr;
     Elf64_Shdr *strtab_hdr = nullptr;
+    Elf64_Shdr *dynsym_hdr = nullptr;
+    Elf64_Shdr *dynstr_hdr = nullptr;
 
     for (auto &shdr : shdrs)
     {                                               // check all the shdrs
         const char *name = &shstrtab[shdr.sh_name]; // shdr.sh_name the section name , find it in shstrtab
 
-        if (strcmp(name, "symtab") == 0)
+        if (strcmp(name, ".symtab") == 0)
         {
             symtab_hdr = &shdr;
         }
@@ -58,63 +60,77 @@ static vector<Symbol> read_symbols_64(ifstream &file, const Elf64_Ehdr &ehdr)
         {
             strtab_hdr = &shdr;
         }
+        else if (strcmp(name, ".dynsym") == 0)
+        {
+            dynsym_hdr = &shdr;
+        }
+        else if (strcmp(name, ".dynstr") == 0)
+        {
+            dynstr_hdr = &shdr;
+        }
     }
 
-    // if there is no symtab , the program may delete it
-    if (symtab_hdr == nullptr)
+    if (symtab_hdr != nullptr && strtab_hdr != nullptr)
     {
-        for (auto &shdr : shdrs)
-        {
-            const char *name = &shstrtab[shdr.sh_name];
+        vector<char> strtab(strtab_hdr->sh_size); // the function name , strtab_hdr is a pointer use  -> to see the value
+        file.seekg(strtab_hdr->sh_offset, ios::beg);
+        file.read(strtab.data(), strtab_hdr->sh_size);
 
-            if (strcmp(name, ".dynsym") == 0)
+        size_t sym_count = symtab_hdr->sh_size / sizeof(Elf64_Sym); // each string is 24 bytes(Elf64_Sym)
+        vector<Elf64_Sym> syms(sym_count);                          // elf64_sym the at_value(memory , address)
+        file.seekg(symtab_hdr->sh_offset, ios::beg);
+        file.read(reinterpret_cast<char *>(syms.data()), symtab_hdr->sh_size);
+
+        for (const auto &sym : syms)
+        {
+            if (sym.st_name == 0)
             {
-                symtab_hdr = &shdr;
+                continue;
             }
-            else if (strcmp(name, ".dynstr") == 0)
+            if (sym.st_value == 0)
             {
-                strtab_hdr = &shdr;
+                continue;
             }
+
+            Symbol s;
+            s.name = &strtab[sym.st_name];
+            s.offset = sym.st_value;
+            s.size = sym.st_size;
+            s.type = get_symbol_type(sym.st_info);
+
+            result.push_back(s);
         }
     }
 
-    if (symtab_hdr == nullptr || strtab_hdr == nullptr)
+    if (dynsym_hdr != nullptr && dynstr_hdr != nullptr)
     {
-        cerr << "[Symbols] :Error , symbol table not found" << endl;
-        return result;
-    }
+        vector<char> dynstr(dynstr_hdr->sh_size); // the function name , strtab_hdr is a pointer use  -> to see the value
+        file.seekg(dynstr_hdr->sh_offset, ios::beg);
+        file.read(dynstr.data(), dynstr_hdr->sh_size);
 
-    vector<char> strtab(strtab_hdr->sh_size); // the function name , strtab_hdr is a pointer use  -> to see the value
-    file.seekg(strtab_hdr->sh_offset, ios::beg);
-    file.read(strtab.data(), strtab_hdr->sh_size);
+        size_t sym_count = dynsym_hdr->sh_size / sizeof(Elf64_Sym); // each string is 24 bytes(Elf64_Sym)
+        vector<Elf64_Sym> syms(sym_count);                          // elf64_sym the at_value(memory , address)
+        file.seekg(dynsym_hdr->sh_offset, ios::beg);
+        file.read(reinterpret_cast<char *>(syms.data()), dynsym_hdr->sh_size);
 
-    size_t sym_count = symtab_hdr->sh_size / sizeof(Elf64_Sym); // each string is 24 bytes(Elf64_Sym)
-    vector<Elf64_Sym> syms(sym_count);                          // elf64_sym the at_value(memory , address)
-    file.read(reinterpret_cast<char *>(syms.data()), symtab_hdr->sh_size);
-
-    for (const auto &sym : syms)
-    {
-        if (sym.st_name == 0)
+        for (const auto &sym : syms)
         {
-            continue;
-        }
-        if (sym.st_value == 0)
-        {
-            continue;
-        }
 
-        Symbol s;
-        s.name = &strtab[sym.st_name];
-        s.offset = sym.st_value;
-        s.size = sym.st_size;
-        s.type = get_symbol_type(sym.st_info);
+            if (sym.st_name == 0)
+                continue;
+            if (sym.st_value == 0)
+                continue;
 
-        result.push_back(s);
+            Symbol s;
+            s.name = &dynstr[sym.st_name];
+            s.offset = sym.st_value;
+            s.size = sym.st_size;
+            s.type = get_symbol_type(sym.st_info);
+            result.push_back(s);
+        }
     }
-
     return result;
 }
-
 vector<Symbol> read_symbols(const string &target_path)
 {
     ifstream file(target_path, ios::binary); // use binary to open the file
