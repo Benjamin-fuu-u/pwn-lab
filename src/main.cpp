@@ -5,8 +5,9 @@
 #include "process/process.h"
 #include "memory/memory.h"
 #include "common/color.h"
-#include "elf/elf_view.h"
 #include "symbols/symbols.h"
+#include "debugger/debugger.h"
+#include "debugger/cli.h"
 
 using namespace std;
 
@@ -19,21 +20,6 @@ int main(int argc, char *argv[])
         exit(1);
     }
     const char *target_path = argv[1];
-
-    if (!print_elf_info(target_path))
-    {
-        cerr << "[main]: Target is not a valid ELF";
-        return -1;
-    }
-
-    vector<Symbol> symbols = read_symbols(target_path);
-
-    if (symbols.empty())
-    {
-        cerr << "No symbol found" << endl;
-        return -1;
-    }
-
     pid_t child_pid = start_child_and_father_program(target_path);
     if (child_pid == -1)
     {
@@ -45,11 +31,33 @@ int main(int argc, char *argv[])
 
     print_colored_maps(regions);
 
-    uint64_t base_address = get_base_address(regions, target_path);
+    uint64_t base = get_base_address(regions, target_path);
+    vector<Symbol> symbols = read_symbols(target_path);
+    cout << endl;
+    print_symbol_address(symbols, base);
 
-    bool is_pie = check_is_pie(target_path);
+    uint64_t main_off = find_symbol_offset(symbols, "main");
 
-    print_symbol_addresses(symbols, base_address, is_pie);
+    if (main_off == 0)
+    {
+        cerr << "[Debugger] cannot find main  , Debugger stop" << endl;
+        clean_child_program(child_pid);
+        return 1;
+    }
+
+    cerr << "The ptogram stop at main" << endl;
+
+    MiniDebugger dbg(child_pid);
+    dbg.set_breakpoint(base + main_off);
+
+    if (!dbg.run_to_breakpoint())
+    {
+        clean_child_program(child_pid);
+        cerr << "[Debugger]: cannot stop at main" << endl;
+        return 1;
+    }
+
+    run_debugger_cli(dbg, symbols, base);
 
     clean_child_program(child_pid);
     return 0;

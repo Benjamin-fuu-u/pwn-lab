@@ -17,6 +17,7 @@ namespace Color
     constexpr const char *BOLD_ORANGE = "\033[1;38;2;255;167;38m";
     constexpr const char *BOLD_SKY_BLUE = "\033[1;38;2;100;181;246m";
     constexpr const char *BOLD_LAVENDER = "\033[1;38;2;186;104;200m";
+    constexpr const char *BOLD_MAGENTA = "\033[1;38;2;255;0;255m";
     constexpr const char *BOLD_CYAN = "\033[1;38;2;100;181;246m";
     constexpr const char *BOLD_GREY = "\033[1;38;2;158;158;158m";
     constexpr const char *BOLD_WHITE = "\033[1;97m";
