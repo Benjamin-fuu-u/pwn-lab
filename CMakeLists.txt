@@ -1,0 +1,30 @@
+#minimum need for version
+cmake_minimum_required(VERSION 3.16)
+
+# project name called "linux-pwn-lab" using C++
+project(linux-pwn-lab CXX)
+
+#C++ version C++17
+set(CMAKE_CXX_STANDARD 17)
+
+#must use C++17
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+#builed an ".exe" called hello , the origin code is hello.cpp
+add_executable(hello src/hello.cpp)
+
+add_executable(mapview
+                 src/main.cpp
+                 src/process/process.cpp
+                 src/memory/memory.cpp
+                 src/symbols/symbols.cpp
+              )
+
+# push the .exe under build
+set_target_properties(hello PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+)
+
+set_target_properties(mapview PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+)

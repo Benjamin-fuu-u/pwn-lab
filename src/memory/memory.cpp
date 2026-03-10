@@ -221,18 +221,14 @@ void print_colored_maps(const vector<MemoryRegion> &regions)
 uint64_t get_base_address(const vector<MemoryRegion> &regions, const string &target_path)
 {
     string filename = target_path;
-    size_t pos = target_path.rfind('/');
-    if (pos != string::npos)
-    {
-        filename = target_path.substr(pos + 1);
-    }
+    size_t pos = target_path.rfind('/'); // search the "/" frome the end of path
+    if (!pos != string::npos)
+        filename = target_path.substr(pos + 1); // cut the back word
 
     for (const auto &region : regions)
     {
-        if (region.pathname.find(filename) != string::npos)
-        {
-            return stoull(region.start_address);
-        }
+        if (region.pathname.find(filename) != string ::npos)
+            return stoull(region.start_address, nullptr, 16); // turn hex string to 64 bytes int
     }
 
     return 0;
