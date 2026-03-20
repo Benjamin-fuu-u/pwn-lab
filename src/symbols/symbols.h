@@ -1,4 +1,4 @@
-#pragma
+#pragma once
 #include <string>
 #include <vector>
 #include <cstdint>
@@ -16,4 +16,4 @@ vector<Symbol> read_symbols(const string &target_path);
 
 void print_symbol_address(const vector<Symbol> &symbols, uint64_t base_address);
 
-uint64_t find_symbol_offset(const vector<Symbol> &symbols, string &name);
+uint64_t find_symbol_offset(const vector<Symbol> &symbols, const string &name);

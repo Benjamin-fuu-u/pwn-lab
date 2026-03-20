@@ -94,6 +94,8 @@ vector<Symbol> read_symbols(const string &target_path)
 
 void print_symbol_address(const vector<Symbol> &symbols, uint64_t base_address)
 {
+    cout << "==============" << Color::YELLOW << " Function Address " << Color::RESET << "================" << endl;
+
     cout << "function address         function name" << endl;
 
     vector<Symbol> sorted = symbols;
@@ -117,15 +119,15 @@ void print_symbol_address(const vector<Symbol> &symbols, uint64_t base_address)
 
         cout << s.name << Color::RESET << endl;
     }
-    cout << dec << Color::RESET;
+    cout << dec << Color::RESET << endl;
 }
 
-int64_t find_symbol_offset(const vector<Symbol> &symbols, const string &name) // find current function affresss
+uint64_t find_symbol_offset(const vector<Symbol> &symbols, const string &name) // find current function affresss
 {
     for (const auto &s : symbols)
     {
         if (s.name == name)
             return s.offset;
     }
-    return -1;
+    return 0;
 }

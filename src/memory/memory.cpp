@@ -128,6 +128,8 @@ void print_colored_maps(const vector<MemoryRegion> &regions)
 {
     using namespace std;
 
+    cout << "==================" << Color::YELLOW << " Memory Mapping " << Color::RESET << "=================" << endl;
+
     cout << Color::BOLD_WHITE << "Address_range                             " << "perm    " << "offset      " << "LABEL      " << "path" << endl;
 
     for (const auto &region : regions)
@@ -222,7 +224,7 @@ uint64_t get_base_address(const vector<MemoryRegion> &regions, const string &tar
 {
     string filename = target_path;
     size_t pos = target_path.rfind('/'); // search the "/" frome the end of path
-    if (!pos != string::npos)
+    if (pos != string::npos)
         filename = target_path.substr(pos + 1); // cut the back word
 
     for (const auto &region : regions)
