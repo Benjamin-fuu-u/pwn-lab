@@ -94,7 +94,10 @@ vector<Symbol> read_symbols(const string &target_path)
 
 void print_symbol_address(const vector<Symbol> &symbols, uint64_t base_address)
 {
-    cout << "======================" << Color::YELLOW << " Function Address " << Color::RESET << "========================" << endl;
+    cout << Color::BOLD_LAVENDER
+         << "=== [ " << Color::YELLOW << "Function Address" << Color::BOLD_LAVENDER
+         << " ] ==================================================================================="
+         << Color::RESET << endl;
 
     cout << "function address         function name" << endl;
 

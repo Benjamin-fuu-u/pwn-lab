@@ -68,12 +68,6 @@ bool MiniDebugger::run_to_breakpoint()
     int status;
     waitpid(m_pid, &status, 0); // wait when the child program send single (0xcc or error)
 
-    if (WIFEXITED(status))
-    { // if true the child program end
-        cout << "[Debugger] Child program exited " << WEXITSTATUS(status) << endl;
-        return false;
-    }
-
     if (WIFSIGNALED(status))
     {
         cout << "[Debugger] : Program exited with code " << WTERMSIG(status) << endl;
@@ -88,7 +82,9 @@ bool MiniDebugger::run_to_breakpoint()
     regs.rip = m_bp_addr;                          // the kernel has point the 0xcc next Assembly changed it to the breakpoint addrss
     ptrace(PTRACE_SETREGS, m_pid, nullptr, &regs); // write the regs back
 
-    cout << Color::BOLD_CORAL_RED << "[Debugger] Hit breakpoint at ox" << hex << m_bp_addr << dec << Color::RESET << endl;
+    cout << Color::BOLD_CORAL_RED << "[Debugger] Hit breakpoint at ox" << hex << m_bp_addr << dec << Color::RESET << endl
+         << endl;
+
     // ptrace(PTRACE_SYSCALL, m_pid, nullptr, nullptr);
     return true;
 }
@@ -111,25 +107,57 @@ bool MiniDebugger::single_step()
 
 void MiniDebugger::print_registers()
 {
-    struct user_regs_struct regs;
+    struct user_regs_struct regs{};
     ptrace(PTRACE_GETREGS, m_pid, nullptr, &regs);
 
-    cout << Color::RESET << "====================== " << Color::YELLOW << "Registers" << Color::RESET << " ======================" << endl;
+    static bool has_prev = false;
+    static user_regs_struct prev_regs{};
 
-    cout << "RIP = " << Color::BOLD_YELLOW << "0x" << hex << regs.rip << Color::RESET << endl;
-    cout << "RSP = " << Color::BOLD_CORAL_RED << "0x" << regs.rsp << Color::RESET << endl;
-    cout << "RBP = " << Color::BOLD_CORAL_RED << "0x" << regs.rbp << Color::RESET << endl;
+    auto reg_color = [&](unsigned long long cur, unsigned long long prev, const char *highlight) -> const char *
+    {
+        if (!has_prev)
+            return highlight;
+        return (cur == prev) ? Color::BOLD_GREY : highlight;
+    };
 
-    cout << "RAX = " << Color::BOLD_ORANGE << "0x" << regs.rax << Color::RESET << endl;
-    cout << "RDI = " << Color::BOLD_DARK_BLUE << "0x" << regs.rdi << Color::RESET << endl;
-    cout << "RSI = " << Color::BOLD_DARK_BLUE << "0x" << regs.rsi << Color::RESET << endl;
-    cout << "RDX = " << Color::BOLD_DARK_BLUE << "0x" << regs.rdx << Color::RESET << endl;
+    cout << Color::BOLD_LAVENDER
+         << "=== [ " << Color::YELLOW << "Registers" << Color::BOLD_LAVENDER
+         << " ] ======================================================================================= "
+         << Color::RESET << endl;
+
+    cout << " RIP = " << reg_color(regs.rip, prev_regs.rip, Color::BOLD_YELLOW)
+         << "0x" << hex << left << setw(12) << regs.rip << Color::RESET << "  ";
+    cout << " RSP = " << reg_color(regs.rsp, prev_regs.rsp, Color::BOLD_CORAL_RED)
+         << "0x" << left << setw(12) << regs.rsp << Color::RESET << "  ";
+
+    cout << " RBP = " << reg_color(regs.rbp, prev_regs.rbp, Color::BOLD_CORAL_RED)
+         << "0x" << left << setw(12) << regs.rbp << Color::RESET << "  ";
+    cout << " RAX = " << reg_color(regs.rax, prev_regs.rax, Color::BOLD_ORANGE)
+         << "0x" << left << setw(12) << regs.rax << Color::RESET << endl;
+
+    cout << " RDI = " << reg_color(regs.rdi, prev_regs.rdi, Color::BOLD_DARK_BLUE)
+         << "0x" << left << setw(12) << regs.rdi << Color::RESET << "  ";
+    cout << " RSI = " << reg_color(regs.rsi, prev_regs.rsi, Color::BOLD_DARK_BLUE)
+         << "0x" << left << setw(12) << regs.rsi << Color::RESET << "  ";
+
+    cout << " RDX = " << reg_color(regs.rdx, prev_regs.rdx, Color::BOLD_DARK_BLUE)
+         << "0x" << left << setw(12) << regs.rdx << Color::RESET << "  ";
+
+    int zf = (regs.eflags >> 6) & 1ULL;
+    cout << Color::BOLD_YELLOW << " ZF = " << zf << endl;
+
     cout << Color::RESET << dec << endl;
+    prev_regs = regs;
+    has_prev = true;
 }
 
 void MiniDebugger::disassemble_at_rip(int count = 1)
 {
     uint64_t rip = get_rip();
+    if (rip == 0)
+    {
+        return;
+    }
 
     uint8_t code[16 * count];
     read_memory(rip, code, sizeof(code)); // read the next assembly (16 bytes) to code
@@ -146,10 +174,10 @@ void MiniDebugger::disassemble_at_rip(int count = 1)
     size_t n = cs_disasm(handle, code, sizeof(code), rip, count, &insn);
     // handle capstone , code the disassemble code ,rip use whem jump or call , 1 one assemble , insn store the result
 
-    if (n != 1)
+    if (n > 1)
     {
-        cout << Color::BOLD_YELLOW << "current line" << endl;
-        cout << ">>>";
+        cout << Color::YELLOW << "current line" << endl;
+        cout << ">";
     }
 
     for (size_t i = 0; i < n; i++)
@@ -167,7 +195,7 @@ void MiniDebugger::disassemble_at_rip(int count = 1)
             cout << "   ";
         }
 
-        cout << Color::BOLD_CORAL_RED << insn[i].mnemonic << " " << Color::BOLD_ORANGE << insn[i].op_str; // insn.mnemonic  like mov call , insn.op_str is the operater object
+        cout << Color::BOLD_LIGHT_RED << insn[i].mnemonic << " " << Color::BOLD_ORANGE << insn[i].op_str; // insn.mnemonic  like mov call , insn.op_str is the operater object
         cout << Color::RESET << dec << endl;
     }
     cs_free(insn, n); // memory release
@@ -180,15 +208,24 @@ void MiniDebugger::print_stack()
     ptrace(PTRACE_GETREGS, m_pid, nullptr, &regs);
     uint64_t rsp = regs.rsp;
 
-    cout << Color::RESET << "====================== " << Color::YELLOW << "Stack (top 10)" << Color::RESET << " ======================" << Color::RESET << endl;
+    cout << Color::BOLD_LAVENDER << "=== [ " << Color::YELLOW << "Stack (top 10)" << Color::BOLD_LAVENDER
+         << " ] ==================================================================================" << Color::RESET << endl;
     for (int i = 0; i < 10; i++)
     {
         uint64_t addr = rsp + i * 8;
         long val = ptrace(PTRACE_PEEKTEXT, m_pid, addr, nullptr);
 
-        cout << setfill(' ') << "[rsp + " << dec << right << setw(2) << i * 8 << "] "
+        cout << " " << setfill(' ') << "[rsp + " << dec << right << setw(2) << i * 8 << "] "
              << Color::BOLD_DARK_BLUE << "0x" << setfill('0') << hex << setw(16) << addr << " : "
-             << Color::BOLD_CORAL_RED << "0x" << setfill('0') << hex << setw(16) << val << Color::RESET << dec << setfill(' ') << endl;
+             << Color::BOLD_CORAL_RED << "0x" << setfill('0') << hex << setw(16) << val << Color::RESET << dec << setfill(' ');
+        if ((i + 1) % 2 == 1)
+        {
+            cout << "  ";
+        }
+        else
+        {
+            cout << endl;
+        }
     }
 }
 
@@ -214,19 +251,13 @@ bool MiniDebugger::stepover()
     if (count == 0)
     {
         cs_close(&handle);
-        ptrace(PTRACE_SINGLESTEP, m_pid, nullptr, nullptr);
-        waitpid(m_pid, nullptr, 0);
-        return true;
+        return single_step();
     }
 
     bool isCall = (insn[0].id == X86_INS_CALL);
     uint64_t nextaddr = rip + insn[0].size;
     cs_free(insn, count);
     cs_close(&handle);
-    if (count == 0)
-    {
-        single_step();
-    }
 
     if (isCall)
     {

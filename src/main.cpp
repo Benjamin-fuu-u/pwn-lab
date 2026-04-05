@@ -40,12 +40,14 @@ int main(int argc, char *argv[])
     MiniDebugger dbg(child_pid);
 
     string s;
-    cout << "====================== " << Color::YELLOW << "USAGE" << Color::RESET << " ======================" << endl;
-    cout << "next or n                                      : show the next  10 instruction" << endl;
-    cout << "single (steps) or s (steps)                    : step through next (steps) instruction" << endl;
-    cout << "breakpoint (address or function name) or bp    : set breakpoint at function name or address" << endl;
-    cout << "continue or c                                  : go to the breakpoint" << endl;
-    cout << "quit or q           : quit the program" << endl;
+    cout << Color::BOLD_LAVENDER
+         << "=== [ " << Color::YELLOW << "USAGE" << Color::BOLD_LAVENDER
+         << " ] ============================================================================================="
+         << Color::RESET << endl;
+
+    cout << " single (steps) or s (steps)                    : step through next (steps) instruction (it will jump call)" << endl;
+    cout << " breakpoint (address or function name) or bp    : set breakpoint at function name or address (and run to the breakpoint)" << endl;
+    cout << " quit or q                                      : quit the program" << endl;
 
     cout << endl
          << Color::BOLD_CORAL_RED << "Suggest set breakpoint at main " << Color::RESET << endl
@@ -59,12 +61,7 @@ int main(int argc, char *argv[])
         string cmd;
         iss >> cmd;
 
-        if (cmd == "next" || cmd == "n")
-        {
-            cout << "==================" << Color::YELLOW << " Current and next nine instruction " << Color::RESET << "==================" << endl;
-            dbg.disassemble_at_rip(10);
-        }
-        else if (cmd == "quit" || cmd == "q")
+        if (cmd == "quit" || cmd == "q")
         {
             break;
         }
@@ -78,6 +75,8 @@ int main(int argc, char *argv[])
                     break;
                 }
                 dbg.disassemble_at_rip(1);
+                dbg.print_registers();
+                cout << Color::YELLOW << ">>" << Color::RESET;
                 continue;
             }
 
@@ -90,16 +89,9 @@ int main(int argc, char *argv[])
                     break;
                 }
                 dbg.disassemble_at_rip(1);
+                dbg.print_registers();
             }
         }
-        else if (cmd == "regs")
-        {
-            cout << "==================" << Color::YELLOW << " Current and next nine instruction " << Color::RESET << "==================" << endl;
-            dbg.disassemble_at_rip(10);
-            dbg.print_registers();
-            dbg.print_stack();
-        }
-
         else if (cmd == "breakpoint" || cmd == "bp")
         {
             string arg;
@@ -134,18 +126,18 @@ int main(int argc, char *argv[])
                 bp_addr = base + static_cast<uint64_t>(offset);
             }
             dbg.set_breakpoint(bp_addr);
-        }
-
-        else if (cmd == "continue" || cmd == "c")
-        {
             if (!dbg.run_to_breakpoint())
             {
                 cout << "[Debugger] Program exited" << endl;
                 break;
             }
             dbg.disassemble_at_rip(1);
-            cout << "==================" << Color::YELLOW << " Current and next nine instruction " << Color::RESET << "==================" << endl;
-            dbg.disassemble_at_rip(10);
+            cout << Color::BOLD_LAVENDER
+                 << "=== [ " << Color::YELLOW << "Current and next six instruction" << Color::BOLD_LAVENDER
+                 << " ] ================================================================="
+                 << Color::RESET << endl;
+
+            dbg.disassemble_at_rip(6);
             dbg.print_registers();
             dbg.print_stack();
         }

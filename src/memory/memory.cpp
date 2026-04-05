@@ -128,7 +128,10 @@ void print_colored_maps(const vector<MemoryRegion> &regions)
 {
     using namespace std;
 
-    cout << "==================" << Color::YELLOW << " Memory Mapping " << Color::RESET << "==================" << endl;
+    cout << Color::BOLD_LAVENDER
+         << "=== [ " << Color::YELLOW << "Memory Mapping" << Color::BOLD_LAVENDER
+         << " ] ====================================================================================="
+         << Color::RESET << endl;
 
     cout << Color::BOLD_WHITE << "Address_range                         " << "perm    " << "offset      " << "LABEL      " << "path" << endl;
 
@@ -136,7 +139,7 @@ void print_colored_maps(const vector<MemoryRegion> &regions)
     {
         RegionType type = classify_region(region);
 
-        cout << Color::BOLD_DARK_BLUE << left << setw(16) << region.start_address << " - " << left << setw(16) << region.end_address;
+        cout << Color::BOLD_DARK_BLUE << " " << left << setw(16) << region.start_address << " - " << left << setw(16) << region.end_address;
 
         cout << "   ";
 
